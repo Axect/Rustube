@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+**/*.mp4
+**/*.jpg
+**/*.mp3
+.idea/
