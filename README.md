@@ -9,9 +9,11 @@ Rust youtube mp3 dowloader.
 
 ## Usage
 
-1. Copy youtube link to `link.txt` line by line.
-2. `cargo run --release`
-3. See `mp3_dir`. That's it!
+1. `git clone https://github.com/Axect/Rustube`
+2. `cd Rustube`
+3. Copy youtube link to `link.txt` line by line.
+4. `cargo run --release`
+5. See `mp3_dir`. That's it!
 
 ## Caution
 
