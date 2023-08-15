@@ -10,18 +10,21 @@ fn main() -> Result<(), std::io::Error> {
     let reader = BufReader::new(link);
 
     // Youtube download
+    // print stdout, stderr
     for line in reader.lines() {
         let line = line?;
         println!("Downloading {}...", line);
         let mut cmd = youtube_default();
         cmd.arg(line);
-        cmd.output().expect("Can't download link");
+        let stdout = cmd.output().expect("Can't download");
+        println!("{}", String::from_utf8_lossy(&stdout.stdout));
+        println!("{}", String::from_utf8_lossy(&stdout.stderr));
     }
 
     println!("Download completed!");
 
     let mut mp4_list: Vec<String> = Vec::new();
-    let mut jpg_list: Vec<String> = Vec::new();
+    let mut webp_list: Vec<String> = Vec::new();
 
     // Find mp4 files
     for file in std::fs::read_dir("temp_mp4_dir")? {
@@ -32,8 +35,8 @@ fn main() -> Result<(), std::io::Error> {
                 Ok(path) if path.contains(".mp4") => {
                     mp4_list.push(path);
                 }
-                Ok(path) if path.contains(".jpg") => {
-                    jpg_list.push(path);
+                Ok(path) if path.contains(".webp") => {
+                    webp_list.push(path);
                 }
                 _ => (),
             }
@@ -88,30 +91,48 @@ fn main() -> Result<(), std::io::Error> {
 
     println!("Convert to mp3 completed!");
 
+    // Move webp files
+    let mut webp_weak_list: Vec<String> = Vec::new();
+    for webp in webp_list.iter() {
+        let old_path = format!("temp_mp4_dir/{}", webp);
+        let webp_weak = weak_slugify(webp.clone());
+        let new_path = format!("mp3_dir/{}", webp_weak);
+        rename(old_path, new_path)?;
+        webp_weak_list.push(webp_weak);
+    }
+
+    // Convert webp to png using dwebp
+    for webp in webp_weak_list.iter() {
+        let webp_path = format!("mp3_dir/{}", webp);
+        let mut cmd = Command::new("dwebp");
+        cmd.arg(webp_path.clone()).arg("-o").arg(webp_path.replace(".webp", ".png"));
+        cmd.output().expect("Can't convert webp to png");
+    }
+
+    println!("Convert webp to png completed!");
+
+    // Remove webp files
+    for webp in webp_weak_list.iter() {
+        remove_file(format!("mp3_dir/{}", webp))?;
+    }
+
+    println!("Remove webp files completed!");
+
     // Remove mp4 files
     for vid in revid_weak {
         remove_file(format!("temp_mp4_dir/{}", vid))?;
     }
-
+    
     println!("Remove mp4 files completed!");
-
-    // Move jpg files
-    for jpg in jpg_list {
-        let old_path = format!("temp_mp4_dir/{}", jpg);
-        let new_path = format!("mp3_dir/{}", jpg);
-        rename(old_path, new_path)?;
-    }
-
-    println!("Move jpg files completed!");
 
     Ok(())
 }
 
 fn youtube_default() -> Command {
-    let mut cmd = Command::new("youtube-dl");
+    let mut cmd = Command::new("yt-dlp");
     cmd.arg("-o")
         .arg("temp_mp4_dir/%(title)s.%(ext)s")
-        .arg("--embed-thumbnail")
+        .arg("--write-thumbnail")
         .arg("--format")
         .arg("mp4");
     cmd

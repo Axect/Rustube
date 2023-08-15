@@ -3,5 +3,6 @@
 **/*.mp4
 **/*.jpg
 **/*.mp3
+**/*.png
 .idea/
 *.lock

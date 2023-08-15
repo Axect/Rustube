@@ -4,7 +4,7 @@ Rust youtube mp3 dowloader.
 
 ## Prerequisites
 
-* `youtube-dl`
+* `yt-dlp`
 * `ffmpeg`
 
 ## Usage
