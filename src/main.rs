@@ -14,7 +14,8 @@ fn main() -> Result<(), std::io::Error> {
     for line in reader.lines() {
         let line = line?;
         println!("Downloading {}...", line);
-        let mut cmd = youtube_default();
+        //let mut cmd = youtube_default();
+        let mut cmd = youtube_to_flac();
         cmd.arg(line);
         let stdout = cmd.output().expect("Can't download");
         println!("{}", String::from_utf8_lossy(&stdout.stdout));
@@ -26,13 +27,29 @@ fn main() -> Result<(), std::io::Error> {
     let mut mp4_list: Vec<String> = Vec::new();
     let mut webp_list: Vec<String> = Vec::new();
 
-    // Find mp4 files
+    // // Find mp4 files
+    // for file in std::fs::read_dir("temp_mp4_dir")? {
+    //     let entry = file?;
+    //     let path = entry.path();
+    //     if !path.is_dir() {
+    //         match entry.file_name().into_string() {
+    //             Ok(path) if path.contains(".mp4") => {
+    //                 mp4_list.push(path);
+    //             }
+    //             Ok(path) if path.contains(".webp") => {
+    //                 webp_list.push(path);
+    //             }
+    //             _ => (),
+    //         }
+    //     }
+    // }
+    // Find flac files
     for file in std::fs::read_dir("temp_mp4_dir")? {
         let entry = file?;
         let path = entry.path();
         if !path.is_dir() {
             match entry.file_name().into_string() {
-                Ok(path) if path.contains(".mp4") => {
+                Ok(path) if path.contains(".flac") => {
                     mp4_list.push(path);
                 }
                 Ok(path) if path.contains(".webp") => {
@@ -55,11 +72,11 @@ fn main() -> Result<(), std::io::Error> {
         .into_iter()
         .map(|x| weak_slugify(x))
         .collect();
-    let remp3_weak: Vec<String> = revid_weak
-        .clone()
-        .into_iter()
-        .map(|x| x.replace(".mp4", ".mp3"))
-        .collect();
+    //let remp3_weak: Vec<String> = revid_weak
+    //    .clone()
+    //    .into_iter()
+    //    .map(|x| x.replace(".mp4", ".mp3"))
+    //    .collect();
 
     // Rename mp4 file
     for (old, new) in mp4_list.into_iter().zip(&revid_weak) {
@@ -76,17 +93,18 @@ fn main() -> Result<(), std::io::Error> {
         .into_iter()
         .map(|x| strong_slugify(x))
         .collect();
-    let remp3: Vec<String> = remp3_weak.into_iter().map(|x| strong_slugify(x)).collect();
+    //let remp3: Vec<String> = remp3_weak.into_iter().map(|x| strong_slugify(x)).collect();
 
     // Parallel convert
     revid
         .par_iter()
-        .zip(remp3.par_iter())
-        .for_each(|(vid, mp3)| {
+        //.zip(remp3.par_iter())
+        .for_each(|vid| {
             let vid_path = format!("temp_mp4_dir/{}", vid);
-            let mp3_path = format!("mp3_dir/{}", mp3);
-            let mut cmd = convert_mp3(&vid_path, &mp3_path);
-            cmd.output().expect("Can't convert mp4 to mp3");
+            let mp3_path = format!("mp3_dir/{}", vid);
+            rename(vid_path, mp3_path).unwrap();
+            //let mut cmd = convert_mp3(&vid_path, &mp3_path);
+            //cmd.output().expect("Can't convert mp4 to mp3");
         });
 
     println!("Convert to mp3 completed!");
@@ -118,12 +136,12 @@ fn main() -> Result<(), std::io::Error> {
 
     println!("Remove webp files completed!");
 
-    // Remove mp4 files
-    for vid in revid_weak {
-        remove_file(format!("temp_mp4_dir/{}", vid))?;
-    }
-    
-    println!("Remove mp4 files completed!");
+    //// Remove mp4 files
+    //for vid in revid_weak {
+    //    remove_file(format!("temp_mp4_dir/{}", vid))?;
+    //}
+    //
+    //println!("Remove mp4 files completed!");
 
     Ok(())
 }
@@ -135,6 +153,20 @@ fn youtube_default() -> Command {
         .arg("--write-thumbnail")
         .arg("--format")
         .arg("mp4");
+    cmd
+}
+
+fn youtube_to_flac() -> Command {
+    let mut cmd = Command::new("yt-dlp");
+    cmd.arg("-o")
+        .arg("temp_mp4_dir/%(title)s.%(ext)s")
+        .arg("--write-thumbnail")
+        .arg("-x")
+        .arg("--audio-format")
+        .arg("flac")
+        .arg("--audio-quality")
+        .arg("0")
+        .arg("--embed-metadata");
     cmd
 }
 
